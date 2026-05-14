@@ -61,3 +61,6 @@ terraform apply
 - GitHub Actions
 - Terraform
 - Pytest
+
+## Dev Branch Update
+This branch is used for development changes before merging into main.
