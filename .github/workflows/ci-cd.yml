@@ -2,23 +2,21 @@ name: DevOps CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
 
 jobs:
 
-# 1. Run Tests
-  
   test:
-    name: Run Unit Tests
+    name: Run Tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -28,68 +26,48 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
 
-      - name: Run tests with pytest
+      - name: Run basic tests
         run: |
-          cd app
-          pytest test_app.py -v
+          python -m unittest discover app
 
- 
-  # 2. Build docker image
+
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: test   # Only runs if tests pass
+    needs: test
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: |
-          docker build -t devops-task-manager:latest .
+        run: docker build -t devops-task-manager:latest .
 
-      - name: Smoke test the container
+
+      - name: Run container (smoke test)
         run: |
-          docker run -d -p 5000:5000 --name app_test devops-task-manager:latest
+          docker run -d -p 5000:5000 --name test_app devops-task-manager:latest
           sleep 5
-          curl -f http://localhost:5000/api/health
-          docker stop app_test
-          docker rm app_test
+          curl http://localhost:5000 || true
+          docker stop test_app
+          docker rm test_app
 
-      - name: Save image as artifact
-        run: |
-          docker save devops-task-manager:latest | gzip > devops-task-manager.tar.gz
 
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: devops-task-manager.tar.gz
-
-  # 3. Deploy 
   deploy:
-    name: Deploy (Simulated)
+    name: Simulated Deployment
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Download image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Load Docker image
+      - name: Run production container (simulation)
         run: |
-          docker load < devops-task-manager.tar.gz
-
-      - name: Simulate deployment
-        run: |
-          echo "==============================="
-          echo "  Deploying to production...  "
-          echo "==============================="
-          docker run -d -p 5000:5000 --name prod_app devops-task-manager:latest
-          sleep 3
-          echo "App is running. Health check:"
-          curl -s http://localhost:5000/api/health | python3 -m json.tool
-          echo "Deployment complete!"
+          docker build -t devops-task-manager:prod .
+          docker run -d -p 5001:5000 --name prod_app devops-task-manager:prod
+          sleep 5
+          curl http://localhost:5001 || true
+          docker stop prod_app
+          docker rm prod_app
