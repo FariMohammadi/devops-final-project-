@@ -9,12 +9,10 @@ on:
 jobs:
 
   test:
-    name: Run Tests
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -23,30 +21,27 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install -r app/requirements.txt
 
-      - name: Run basic tests
+      - name: Run tests
         run: |
           python -m unittest discover app
 
 
   build:
-    name: Build Docker Image
     runs-on: ubuntu-latest
     needs: test
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t devops-task-manager:latest .
+        run: docker build -t devops-app .
 
-
-      - name: Run container (smoke test)
+      - name: Run container test
         run: |
-          docker run -d -p 5000:5000 --name test_app devops-task-manager:latest
+          docker run -d -p 5000:5000 --name test_app devops-app
           sleep 5
           curl http://localhost:5000 || true
           docker stop test_app
@@ -54,19 +49,17 @@ jobs:
 
 
   deploy:
-    name: Simulated Deployment
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Run production container (simulation)
+      - name: Deploy simulation
         run: |
-          docker build -t devops-task-manager:prod .
-          docker run -d -p 5001:5000 --name prod_app devops-task-manager:prod
+          docker build -t devops-app:prod .
+          docker run -d -p 5001:5000 --name prod_app devops-app:prod
           sleep 5
           curl http://localhost:5001 || true
           docker stop prod_app
