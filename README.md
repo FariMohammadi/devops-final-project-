@@ -26,11 +26,11 @@ cd app
 pip install -r requirements.txt
 python app.py
 
-Visit http://localhost:5000
+Visit http://localhost:5001
 
 ### Run with Docker
 docker build -t study-planner .
-docker run -d -p 5000:5000 --name myapp study-planner
+docker run -d -p 5001:5001 --name myapp study-planner
 
 ### Run Tests
 cd app
